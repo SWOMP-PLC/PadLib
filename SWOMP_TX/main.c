@@ -22,6 +22,7 @@ void InitConsole();
 void UART_SendByte(uint8_t data);
 void TransmitPacket(uint8_t payload);
 bool WaitForAck(void);
+char ReceivePacketByte(void);
 
 int main(void) {
     SysCtlClockSet(SYSCTL_SYSDIV_5 | SYSCTL_USE_PLL | SYSCTL_OSC_MAIN | SYSCTL_XTAL_16MHZ);
@@ -94,6 +95,12 @@ void TransmitPacket(uint8_t payload) {
         UART_SendByte(packet[i]);
 //        UARTprintf("Packet: %x \n", packet[i]);
     }
+}
+
+char ReceivePacketByte(void){
+    char data;
+    data = UARTCharGet(UART1_BASE);
+    return (unsigned char) data;
 }
 
 bool WaitForAck(void) {

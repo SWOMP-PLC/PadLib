@@ -25,7 +25,7 @@ char ReceivePacketByte(void);
 void ReceivePacket(void);
 
 int main(void) {
-    uint8_t PacketByte;
+    uint32_t PacketByte;
     SysCtlClockSet(SYSCTL_SYSDIV_5 | SYSCTL_USE_PLL | SYSCTL_OSC_MAIN | SYSCTL_XTAL_16MHZ);
 
         InitUART();
@@ -34,7 +34,7 @@ int main(void) {
             UARTprintf("Console Set Complete. \n");
     while (1) {
 //        TransmitPacket(0x55);  // Send a packet
-        PacketByte = ReceivePacketByte();
+        ReceivePacket();
         UARTprintf("Packet: %x \n", PacketByte);
 //        SysCtlDelay(SysCtlClockGet()*10 / 3);  // 10-second delay
     }
@@ -105,8 +105,14 @@ void ReceivePacket(void) {
     uint8_t packet[4];
     int i;
 
+    do {
+            packet[0] = ReceivePacketByte();
+        } while (packet[0] != (0x80 | SOP | SEQ | DES));  // Wait for valid start byte
+
+        UARTprintf("Synchronized. Start byte: %x\n", packet[0]);
+
     // Receive 4 bytes
-    for (i = 0; i < 4; i++) {
+    for (i = 1; i < 4; i++) {
         packet[i] = ReceivePacketByte();
         UARTprintf("Packet: %x \n", packet[i]);
     }
@@ -115,15 +121,19 @@ void ReceivePacket(void) {
     bool valid = true;
 
     // Check byte 0 (SOP | SEQ | DES)
-    if (packet[0] != (0x80 | SOP | DES)) valid = false;
+    //if (packet[0] != (0x80 | SOP | DES)) valid = false;
 
     // Check byte 1 (CTRL | ADD)
-    if (packet[1] != (0x00 | CTRL | ADD)) valid = false;
+    if (packet[1] != (0x00 | CTRL | ADD)){
+        valid = false;
+    }
 
     // Check byte 3 (EOP | CRC)
-    if (packet[3] != (0x80 | EOP | CRC)) valid = false;
+    if (packet[3] != (0x80 | EOP | CRC)) {
+        valid = false;
+    }
 
-    if (valid) {
+    if (valid == true) {
             savedPayload = packet[2];  // Save valid payload
             UARTprintf("Valid packet received. Payload saved: %x\n", savedPayload);
             UART_SendByte(ACK);  // Send ACK
